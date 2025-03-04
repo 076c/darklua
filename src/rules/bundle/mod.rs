@@ -21,6 +21,7 @@ pub(crate) struct BundleOptions {
     parser: Parser,
     modules_identifier: String,
     excludes: Option<wax::Any<'static>>,
+    includes: Options<wax::Any<'static>>,
 }
 
 impl BundleOptions {
@@ -28,9 +29,23 @@ impl BundleOptions {
         parser: Parser,
         modules_identifier: impl Into<String>,
         excludes: impl Iterator<Item = &'a str>,
+        includes: impl Iterator<Item = &'a str>,
     ) -> Self {
         let excludes: Vec<_> = excludes
             .filter_map(|exclusion| match wax::Glob::new(exclusion) {
+                Ok(glob) => Some(glob.into_owned()),
+                Err(err) => {
+                    log::warn!(
+                        "unable to create exclude matcher from `{}`: {}",
+                        exclusion,
+                        err.to_string()
+                    );
+                    None
+                }
+            })
+            .collect();
+        let includes: Vec<_> = includes
+            .filter_map(|inclusion| match wax::Glob::new(inclusion) {
                 Ok(glob) => Some(glob.into_owned()),
                 Err(err) => {
                     log::warn!(
@@ -83,10 +98,11 @@ impl Bundler {
         parser: Parser,
         require_mode: BundleRequireMode,
         excludes: impl Iterator<Item = &'a str>,
+        includes: impl Iterator<Item = &'a str>,
     ) -> Self {
         Self {
             require_mode,
-            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes),
+            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes, includes),
         }
     }
 
@@ -133,11 +149,12 @@ mod test {
             Parser::default(),
             BundleRequireMode::default(),
             std::iter::empty(),
+            std::iter::empty(),
         )
     }
 
     fn new_rule_with_require_mode(mode: impl Into<BundleRequireMode>) -> Bundler {
-        Bundler::new(Parser::default(), mode.into(), std::iter::empty())
+        Bundler::new(Parser::default(), mode.into(), std::iter::empty(), std::iter::empty())
     }
 
     // the bundler rule should only be used internally by darklua
