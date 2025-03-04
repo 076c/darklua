@@ -52,7 +52,8 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
                         path.display(),
                     ))
                 })?;
-
+                // This line is what's wrong. DarkLua doesn't search the current directory.
+                // TODO: make DarkLua search current directory.
                 let mut extra_module_location = self
                     .path_require_mode
                     .get_source(source_name, self.extra_module_relative_location)
