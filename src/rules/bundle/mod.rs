@@ -21,7 +21,7 @@ pub(crate) struct BundleOptions {
     parser: Parser,
     modules_identifier: String,
     excludes: Option<wax::Any<'static>>,
-    includes: Options<wax::Any<'static>>,
+    includes: Option<wax::Any<'static>>,
 }
 
 impl BundleOptions {
@@ -50,7 +50,7 @@ impl BundleOptions {
                 Err(err) => {
                     log::warn!(
                         "unable to create exclude matcher from `{}`: {}",
-                        exclusion,
+                        inclusion,
                         err.to_string()
                     );
                     None
@@ -65,6 +65,13 @@ impl BundleOptions {
             } else {
                 let any_pattern = wax::any::<wax::Glob, _>(excludes)
                     .expect("exclude globs errors should be filtered and only emit a warning");
+                Some(any_pattern)
+            },
+            includes: if includes.is_empty() {
+                None
+            } else {
+                let any_pattern = wax::any::<wax::Glob, _>(includes)
+                    .expect("include globs errors should be filtered and only emit a warning");
                 Some(any_pattern)
             },
         }
