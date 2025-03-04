@@ -42,6 +42,7 @@ impl BundleRequireMode {
         block: &mut Block,
         context: &Context,
         options: &BundleOptions,
+        includes: Vec<String>
     ) -> RuleProcessResult {
         match self {
             Self::Path(path_require_mode) => {
@@ -49,7 +50,7 @@ impl BundleRequireMode {
                 require_mode
                     .initialize(context)
                     .map_err(|err| err.to_string())?;
-                path_require_mode::process_block(block, context, options, &require_mode)
+                path_require_mode::process_block(block, context, options, &require_mode, includes)
             }
         }
     }

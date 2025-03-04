@@ -1,14 +1,15 @@
-use std::path::{Path, PathBuf};
+use std::{any::Any, path::{Path, PathBuf}};
 
 pub(crate) fn find_require_paths<'a, 'b, 'c>(
     path: &'a Path,
     module_folder_name: &'b str,
+    includes: Vec<String>
 ) -> impl Iterator<Item = PathBuf> + 'c
 where
     'a: 'c,
     'b: 'c,
 {
-    PathIterator::new(path, module_folder_name)
+    PathIterator::new(path, module_folder_name, includes)
 }
 
 struct PathIterator<'a, 'b> {
@@ -16,15 +17,17 @@ struct PathIterator<'a, 'b> {
     has_extension: bool,
     module_folder_name: &'b str,
     index: u8,
+    includes: Vec<String>,
 }
 
 impl<'a, 'b> PathIterator<'a, 'b> {
-    fn new(path: &'a Path, module_folder_name: &'b str) -> Self {
+    fn new(path: &'a Path, module_folder_name: &'b str, includes: Vec<String>) -> Self {
         Self {
             path,
             has_extension: path.extension().is_some(),
             module_folder_name,
             index: 0,
+            includes,
         }
     }
 
@@ -57,6 +60,16 @@ impl Iterator for PathIterator<'_, '_> {
                         next_path.set_extension(if self.index == 4 { "luau" } else { "lua" });
                         self.return_next(next_path)
                     }
+                },
+                6 => {
+                    let br = self;
+                    for folder in br.includes.clone() {
+                        
+                        if let Some(path) = br.return_next(br.path.join(folder)) {
+                            br.return_next(path.to_path_buf());
+                        }
+                    }
+                    None
                 }
                 _ => None,
             }
@@ -70,11 +83,12 @@ mod test {
 
     const ANY_FOLDER_NAME: &str = "test";
     const ANY_FOLDER_NAME_WITH_EXTENSION: &str = "test.luau";
+    const INCLUDES: Vec<String> = ["test"];
 
     #[test]
     fn returns_exact_path_when_path_has_an_extension() {
         let source = Path::new("hello.lua");
-        let iterator = PathIterator::new(source, ANY_FOLDER_NAME);
+        let iterator = PathIterator::new(source, ANY_FOLDER_NAME, INCLUDES);
 
         pretty_assertions::assert_eq!(vec![source.to_path_buf()], iterator.collect::<Vec<_>>())
     }
@@ -82,7 +96,7 @@ mod test {
     #[test]
     fn returns_paths_when_path_has_no_extension() {
         let source = Path::new("hello");
-        let iterator = PathIterator::new(source, ANY_FOLDER_NAME);
+        let iterator = PathIterator::new(source, ANY_FOLDER_NAME, INCLUDES);
 
         pretty_assertions::assert_eq!(
             vec![
@@ -100,7 +114,7 @@ mod test {
     #[test]
     fn returns_paths_when_path_has_no_extension_and_module_folder_name_has_an_extension() {
         let source = Path::new("hello");
-        let iterator = PathIterator::new(source, ANY_FOLDER_NAME_WITH_EXTENSION);
+        let iterator = PathIterator::new(source, ANY_FOLDER_NAME_WITH_EXTENSION, INCLUDES);
 
         pretty_assertions::assert_eq!(
             vec![

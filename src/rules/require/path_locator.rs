@@ -27,7 +27,9 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
         &self,
         path: impl Into<PathBuf>,
         source: &Path,
+        includes: Vec<String>,
     ) -> Result<PathBuf, DarkluaError> {
+        let mut bor = includes;
         let mut path: PathBuf = path.into();
         log::trace!(
             "find require path for `{}` from `{}`",
@@ -73,6 +75,7 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
         for potential_path in path_iterator::find_require_paths(
             &normalized_path,
             self.path_require_mode.module_folder_name(),
+            bor.clone(),
         ) {
             if self.resources.is_file(&potential_path)? {
                 return Ok(utils::normalize_path_with_current_dir(potential_path));
@@ -85,6 +88,7 @@ impl<'a, 'b, 'c> RequirePathLocator<'a, 'b, 'c> {
                 path_iterator::find_require_paths(
                     &normalized_path,
                     self.path_require_mode.module_folder_name(),
+                    bor,
                 )
                 .map(|potential_path| potential_path.display().to_string())
                 .collect::<Vec<_>>()

@@ -45,6 +45,7 @@ struct RequirePathProcessor<'a, 'b, 'resources, 'code> {
     skip_module_paths: HashSet<PathBuf>,
     resources: &'resources Resources,
     errors: Vec<String>,
+    includes: Vec<String>,
 }
 
 impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> {
@@ -52,6 +53,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
         context: &'context Context<'b, 'resources, 'code>,
         options: &'a BundleOptions,
         path_require_mode: &'b PathRequireMode,
+        includes: Vec<String>,
     ) -> Self
     where
         'context: 'b,
@@ -73,6 +75,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
             skip_module_paths: Default::default(),
             resources: context.resources(),
             errors: Vec::new(),
+            includes: includes,
         }
     }
 
@@ -107,7 +110,7 @@ impl<'a, 'b, 'code, 'resources> RequirePathProcessor<'a, 'b, 'code, 'resources> 
 
         let require_path = match self
             .path_locator
-            .find_require_path(&literal_require_path, &self.source)
+            .find_require_path(&literal_require_path, &self.source, self.includes.clone())
         {
             Ok(path) => path,
             Err(err) => {
@@ -343,6 +346,7 @@ pub(crate) fn process_block(
     context: &Context,
     options: &BundleOptions,
     path_require_mode: &PathRequireMode,
+    includes: Vec<String>,
 ) -> Result<(), String> {
     if options.parser().is_preserving_tokens() {
         log::trace!(
@@ -362,7 +366,7 @@ pub(crate) fn process_block(
         );
     }
 
-    let mut processor = RequirePathProcessor::new(context, options, path_require_mode);
+    let mut processor = RequirePathProcessor::new(context, options, path_require_mode, includes.clone());
     ScopeVisitor::visit_block(block, &mut processor);
     processor.apply(block, context)
 }

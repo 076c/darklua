@@ -29,7 +29,7 @@ impl BundleOptions {
         parser: Parser,
         modules_identifier: impl Into<String>,
         excludes: impl Iterator<Item = &'a str>,
-        includes: impl Iterator<Item = &'a str>,
+        includes: Vec<String>
     ) -> Self {
         let excludes: Vec<_> = excludes
             .filter_map(|exclusion| match wax::Glob::new(exclusion) {
@@ -44,7 +44,10 @@ impl BundleOptions {
                 }
             })
             .collect();
-        let includes: Vec<_> = includes
+        let iter: Box<dyn Iterator<Item = &str>> = Box::new(includes
+            .iter()
+            .map(|s| s.as_str()));
+        let includes: Vec<wax::Glob> = iter
             .filter_map(|inclusion| match wax::Glob::new(inclusion) {
                 Ok(glob) => Some(glob.into_owned()),
                 Err(err) => {
@@ -98,6 +101,7 @@ impl BundleOptions {
 pub(crate) struct Bundler {
     require_mode: BundleRequireMode,
     options: BundleOptions,
+    includes: Vec<String>,
 }
 
 impl Bundler {
@@ -107,9 +111,11 @@ impl Bundler {
         excludes: impl Iterator<Item = &'a str>,
         includes: impl Iterator<Item = &'a str>,
     ) -> Self {
+        let vec: Vec<String> = includes.map(|s| s.to_string()).collect();
         Self {
             require_mode,
-            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes, includes),
+            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes, vec.clone()),
+            includes: vec.clone(),
         }
     }
 
@@ -122,7 +128,7 @@ impl Bundler {
 impl Rule for Bundler {
     fn process(&self, block: &mut Block, context: &Context) -> RuleProcessResult {
         self.require_mode
-            .process_block(block, context, &self.options)
+            .process_block(block, context, &self.options, self.includes.clone())
     }
 }
 

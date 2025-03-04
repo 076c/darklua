@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+// use tracing_subscriber::fmt::format::DefaultFields;
 
 use crate::frontend::DarkluaResult;
 use crate::nodes::FunctionCall;
@@ -27,6 +28,7 @@ pub struct PathRequireMode {
     use_luau_configuration: bool,
     #[serde(skip)]
     luau_rc_aliases: Option<HashMap<String, PathBuf>>,
+    includes: Vec<String>,
 }
 
 fn default_use_luau_configuration() -> bool {
@@ -40,6 +42,7 @@ impl Default for PathRequireMode {
             sources: Default::default(),
             use_luau_configuration: default_use_luau_configuration(),
             luau_rc_aliases: Default::default(),
+            includes: Vec::new()
         }
     }
 }
@@ -56,12 +59,13 @@ fn is_default_module_folder_name(value: &String) -> bool {
 }
 
 impl PathRequireMode {
-    pub fn new(module_folder_name: impl Into<String>) -> Self {
+    pub fn new(module_folder_name: impl Into<String>, includes: Vec<String>) -> Self {
         Self {
             module_folder_name: module_folder_name.into(),
             sources: Default::default(),
             use_luau_configuration: default_use_luau_configuration(),
             luau_rc_aliases: Default::default(),
+            includes: includes,
         }
     }
 
@@ -105,7 +109,7 @@ impl PathRequireMode {
         if let Some(literal_path) = match_path_require_call(call) {
             let required_path =
                 RequirePathLocator::new(self, context.project_location(), context.resources())
-                    .find_require_path(literal_path, context.current_path())?;
+                    .find_require_path(literal_path, context.current_path(), self.includes.clone())?;
 
             Ok(Some(required_path))
         } else {
